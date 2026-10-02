@@ -25,19 +25,29 @@
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QTableWidget" name="tableWidget"/>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButton_add">
+      <widget class="QLabel" name="label_status">
        <property name="text">
-        <string>Add Server</string>
+        <string>Agent's status</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignCenter</set>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_refresh">
+      <widget class="QTableWidget" name="tableWidget"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_clearOff">
        <property name="text">
-        <string>Refresh</string>
+        <string>Clear Offline Agents</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_clearAll">
+       <property name="text">
+        <string>Clear All Agents</string>
        </property>
       </widget>
      </item>
@@ -52,52 +62,6 @@
       <widget class="QPushButton" name="pushButton_load">
        <property name="text">
         <string>Load</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButton_delete">
-       <property name="text">
-        <string>Delete</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="">
-    <property name="geometry">
-     <rect>
-      <x>140</x>
-      <y>0</y>
-      <width>481</width>
-      <height>27</height>
-     </rect>
-    </property>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QCheckBox" name="checkBox_autoRefresh">
-       <property name="text">
-        <string>Auto Refresh</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="label_interval">
-       <property name="text">
-        <string>Interval (seconds) :</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QSpinBox" name="spinBox_interval">
-       <property name="minimum">
-        <number>1</number>
-       </property>
-       <property name="maximum">
-        <number>60</number>
-       </property>
-       <property name="value">
-        <number>5</number>
        </property>
       </widget>
      </item>

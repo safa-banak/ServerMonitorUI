@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "tcpserver.h"
 #include <QMainWindow>
 #include <QTimer>
 
@@ -17,13 +18,19 @@ public:
     ~MainWindow();
 
 private slots:
-    void addServer();
-    void refreshServers();
+    void addServer(const QString &name, const QString &ip);
+    void onMetricsReceived(const QString &name, int cpu, int ram);
+    void onAgentDisconnected(const QString &name);
     void saveServers();
     void loadServers();
-    void deleteServer();
+    void clearAllAgents();
+    void clearOfflineAgents();
 private:
     Ui::MainWindow *ui;
     QTimer *autoRefreshTimer;
+    TcpServer *tcpServer;
+    void updateStatus();
+    int totalAgents;
+    int onlineAgents;
 };
 #endif // MAINWINDOW_H

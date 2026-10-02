@@ -11,85 +11,106 @@
 #include <QLineEdit>
 #include <QTableWidgetItem>
 #include <QStatusBar>
-
+#include <QColor>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
+    : QMainWindow(parent),totalAgents(0),onlineAgents(0)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    tcpServer = new TcpServer(this);
+    //tcpServer->start(12345);
+    bool starterted = tcpServer->start(12345);
+    if(starterted)
+    {
+        statusBar()->showMessage("Server started on port 12345");
+        //qDebug() << "Message set to status bar";
+    }
+    else
+    {
+        statusBar()->showMessage("Failed to start server on port 12345");
+        //qDebug() << "Failed message set";
+    }
     //Set up table columns
-    ui->tableWidget->setColumnCount(4);
-    ui->tableWidget->setHorizontalHeaderLabels({"Name", "IP", "CPU", "RAM"}); // وقتی کاربر روی این دکمه کلیک کرد تابع addServer روی this صدا زده میشه
+    ui->tableWidget->setColumnCount(5);
+    ui->tableWidget->setHorizontalHeaderLabels({"Status","Name", "IP", "CPU", "RAM"}); // وقتی کاربر روی این دکمه کلیک کرد تابع addServer روی this صدا زده میشه
 
     // Connect buttons
-    connect(ui->pushButton_add, &QPushButton::clicked, this, &MainWindow::addServer);
-    connect(ui->pushButton_refresh, &QPushButton::clicked, this, &MainWindow::refreshServers);
+    connect(tcpServer, &TcpServer::agentConnected, this, &MainWindow::addServer);
+    connect(tcpServer, &TcpServer::metricsReceived, this, &MainWindow::onMetricsReceived);
+    connect(tcpServer, &TcpServer::agentDisconnected, this, &MainWindow::onAgentDisconnected);
     connect(ui->pushButton_save, &QPushButton::clicked, this, &MainWindow::saveServers);
     connect(ui->pushButton_load, &QPushButton::clicked, this, &MainWindow::loadServers);
-    connect(ui->pushButton_delete, &QPushButton::clicked, this, &MainWindow::deleteServer);
-
-    // Update Status bar
-    statusBar()->showMessage("Ready");
-
-    // ساخت تایمر به‌روزرسانی خودکار
-    autoRefreshTimer = new QTimer(this);
-    // اتصال تایمر به slot به‌روزرسانی
-    connect(autoRefreshTimer,&QTimer::timeout,this,&MainWindow::refreshServers);
-    // اتصال چک‌باکس به شروع/توقف تایمر
-    connect(ui->checkBox_autoRefresh, &QCheckBox::toggled, this, [this](bool checked){
-        if (checked){
-            int interval = ui->spinBox_interval->value() * 1000; //تبدیل ثانیه به میلی ثانیه
-            autoRefreshTimer->start(interval);
-            statusBar()->showMessage(QString("Auto refresh enabled (every %1 s)").arg(ui->spinBox_interval->value()));
-        }
-        else {
-            autoRefreshTimer->stop();
-            statusBar()->showMessage("Auto refresh disabled");
-        }
-    });
-    // اگه کاربر بازه‌ی زمانی رو عوض کرد و تایمر فعاله، بازه‌ی جدید اعمال بشه
-    connect(ui->spinBox_interval, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value){
-        if(autoRefreshTimer->isActive()) {
-            autoRefreshTimer->start(value * 1000);
-            statusBar()->showMessage(QString("interval changed to %1 s").arg(value));
-        }
-    });
+    connect(ui->pushButton_clearAll, &QPushButton::clicked, this, &MainWindow::clearAllAgents);
+    connect(ui->pushButton_clearOff, &QPushButton::clicked, this, &MainWindow::clearOfflineAgents);
 }
 
-void MainWindow::addServer()
+void MainWindow::addServer(const QString &name, const QString &ip)
 {
-    bool ok;
-    QString name = QInputDialog::getText(this, "Add Server", "Server name", QLineEdit::Normal, "", &ok);
-    if (!ok || name.isEmpty()) return;
-
-    QString ip = QInputDialog::getText(this, "Add Server", "IP address:", QLineEdit::Normal, "192.168.1.", &ok);
-    if (!ok || ip.isEmpty()) return;
-
+    // چک کن که این Agent قبلا اضافه نشده باشه
+    for (int i = 0; i < ui->tableWidget->rowCount(); ++i) {
+        if(ui->tableWidget->item(i,1)->text() == name){
+            // قبلا هست ، فقط آی پی رو آپدیت کن
+            ui->tableWidget->item(i,2)->setText(ip);
+            ui->tableWidget->item(i, 0)->setBackground(QColor("#C6EFCE"));
+            ui->tableWidget->item(i,0)->setText("On");
+            onlineAgents++;
+            updateStatus();
+            statusBar()->showMessage("Agent reconnected: " + name);
+            return;
+        }
+    }
+    // Agent جدید یک ردیف اضافه کن
     int row = ui->tableWidget->rowCount();
     ui->tableWidget->insertRow(row);
-    ui->tableWidget->setItem(row, 0, new QTableWidgetItem(name));
-    ui->tableWidget->setItem(row, 1, new QTableWidgetItem(ip));
-    ui->tableWidget->setItem(row, 2, new QTableWidgetItem("0"));
+    ui->tableWidget->setItem(row, 0, new QTableWidgetItem("New"));
+    ui->tableWidget->item(row, 0)->setBackground(QColor("#FFC7CE"));
+    ui->tableWidget->setItem(row, 1, new QTableWidgetItem(name));
+    ui->tableWidget->setItem(row, 2, new QTableWidgetItem(ip));
     ui->tableWidget->setItem(row, 3, new QTableWidgetItem("0"));
+    ui->tableWidget->setItem(row, 4, new QTableWidgetItem("0"));
 
-    statusBar()->showMessage(QString("Server added: %1").arg(name));
+    totalAgents++;
+    onlineAgents++;
+    updateStatus();
+    statusBar()->showMessage("Agent connected: " + name);
 }
 
-void MainWindow::refreshServers()
+void MainWindow::onMetricsReceived(const QString &name, int cpu, int ram)
 {
-    if (ui->tableWidget->rowCount() == 0) {
-        statusBar()->showMessage("No servers to refresh.");
-        return;
-    }
-    for (int i = 0; i < ui->tableWidget->rowCount(); ++i) {
-        int cpu = QRandomGenerator::global()->bounded(101);          // 0-100
-        int ram = QRandomGenerator::global()->bounded(512, 8192);   // 512-8191 MB
-        ui->tableWidget->setItem(i, 2, new QTableWidgetItem(QString::number(cpu)));
-        ui->tableWidget->setItem(i, 3, new QTableWidgetItem(QString::number(ram)));
-    }
+    for(int i = 0; i < ui->tableWidget->rowCount(); ++i){
+        if(ui->tableWidget->item(i,1)->text() == name){
+            ui->tableWidget->item(i,3)->setText(QString::number(cpu));
+            ui->tableWidget->item(i,4)->setText(QString::number(ram));
 
-    statusBar()->showMessage(QString("Servers refreshed: %1").arg(ui->tableWidget->rowCount()));
+            statusBar()->showMessage(QString("Received cpu and ram usage for %1 server agent").arg(name));
+            break;
+        }
+    }
+}
+
+void MainWindow::onAgentDisconnected(const QString &name)
+{
+    for(int i = 0; i < ui->tableWidget->rowCount(); ++i){
+        if(ui->tableWidget->item(i,1)->text() == name){
+            //ui->tableWidget->item(i, 0)->setText(QString("%1 (OffLine)").arg(name));
+            // تغییر رنگ پس زمینه همه این ردیف به زرد
+            ui->tableWidget->item(i, 0)->setBackground(QColor("#FFEB9C"));
+            ui->tableWidget->item(i,0)->setText(" Off ");
+            ui->tableWidget->item(i,3)->setText(" 0 ");
+            ui->tableWidget->item(i,4)->setText(" 0 ");
+
+            onlineAgents--;
+            updateStatus();
+            statusBar()->showMessage(QString(" %1's server went OFFLINE").arg(name));
+            break;
+        }
+    }
+}
+
+void MainWindow::updateStatus()
+{
+    ui->label_status->setText(QString("Online : %1  /  Total : %2 ").arg(onlineAgents).arg(totalAgents));
 }
 
 void MainWindow::saveServers()
@@ -101,10 +122,10 @@ void MainWindow::saveServers()
     QJsonArray servers;
     for (int i = 0; i < ui->tableWidget->rowCount(); ++i) {
         QJsonObject server;
-        server["name"] = ui->tableWidget->item(i, 0)->text();
-        server["ip"] = ui->tableWidget->item(i, 1)->text();
-        server["cpu"] = ui->tableWidget->item(i, 2)->text().toInt();
-        server["ram"] = ui->tableWidget->item(i, 3)->text().toInt();
+        server["name"] = ui->tableWidget->item(i, 1)->text();
+        server["ip"] = ui->tableWidget->item(i, 2)->text();
+        server["cpu"] = ui->tableWidget->item(i, 3)->text().toInt();
+        server["ram"] = ui->tableWidget->item(i, 4)->text().toInt();
         servers.append(server);
     }
 
@@ -149,28 +170,43 @@ void MainWindow::loadServers()
         QJsonObject obj = value.toObject();
         int row = ui->tableWidget->rowCount();
         ui->tableWidget->insertRow(row);
-        ui->tableWidget->setItem(row, 0, new QTableWidgetItem(obj["name"].toString()));
-        ui->tableWidget->setItem(row, 1, new QTableWidgetItem(obj["ip"].toString()));
-        ui->tableWidget->setItem(row, 2, new QTableWidgetItem(QString::number(obj["cpu"].toInt())));
-        ui->tableWidget->setItem(row, 3, new QTableWidgetItem(QString::number(obj["ram"].toInt())));
+        ui->tableWidget->setItem(row, 1, new QTableWidgetItem(obj["name"].toString()));
+        ui->tableWidget->setItem(row, 2, new QTableWidgetItem(obj["ip"].toString()));
+        ui->tableWidget->setItem(row, 3, new QTableWidgetItem(QString::number(obj["cpu"].toInt())));
+        ui->tableWidget->setItem(row, 4, new QTableWidgetItem(QString::number(obj["ram"].toInt())));
     }
 
     statusBar()->showMessage(QString("Loaded %1 servers from %2").arg(servers.size()).arg(fileName));
 }
 
-void MainWindow::deleteServer()
+void MainWindow::clearAllAgents()
 {
-    int row = ui->tableWidget->currentRow();
-    if (row < 0) {
-        QMessageBox::information(this, "Delete Server", "Please select a server row first.");
-        return;
+    ui->tableWidget->setRowCount(0);
+    totalAgents = 0;
+    onlineAgents = 0;
+    updateStatus();
+    statusBar()->showMessage("All Agents cleared.");
+    tcpServer->stop();
+    tcpServer->start(12345);
+}
+
+void MainWindow::clearOfflineAgents()
+{
+    for(int i = ui->tableWidget->rowCount()-1; i >= 0; --i){
+        if(ui->tableWidget->item(i,0)->text() == " Off " ){
+            ui->tableWidget->removeRow(i);
+            totalAgents--;
+        }
     }
-    ui->tableWidget->removeRow(row);
-    ui->tableWidget->item(-1,-1);
-    statusBar()->showMessage("Server deleted");
+    updateStatus();
+    statusBar()->showMessage("Offline agents cleard.");
 }
 
 MainWindow::~MainWindow()
 {
+    // این شرط و دستور بعد آن لازم نیست به لحاظ فنی اما برای شفافیت کد بد نیست
+    if(tcpServer)
+        tcpServer->stop();
+
     delete ui;
 }
