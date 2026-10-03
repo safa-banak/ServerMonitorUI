@@ -12,6 +12,7 @@
 #include <QTableWidgetItem>
 #include <QStatusBar>
 #include <QColor>
+#include <QDateTime>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),totalAgents(0),onlineAgents(0)
@@ -32,8 +33,8 @@ MainWindow::MainWindow(QWidget *parent)
         //qDebug() << "Failed message set";
     }
     //Set up table columns
-    ui->tableWidget->setColumnCount(5);
-    ui->tableWidget->setHorizontalHeaderLabels({"Status","Name", "IP", "CPU", "RAM"}); // وقتی کاربر روی این دکمه کلیک کرد تابع addServer روی this صدا زده میشه
+    ui->tableWidget->setColumnCount(6);
+    ui->tableWidget->setHorizontalHeaderLabels({"Status","Name", "IP", "CPU", "RAM", "Last Update"}); // وقتی کاربر روی این دکمه کلیک کرد تابع addServer روی this صدا زده میشه
 
     // Connect buttons
     connect(tcpServer, &TcpServer::agentConnected, this, &MainWindow::addServer);
@@ -69,7 +70,8 @@ void MainWindow::addServer(const QString &name, const QString &ip)
     ui->tableWidget->setItem(row, 2, new QTableWidgetItem(ip));
     ui->tableWidget->setItem(row, 3, new QTableWidgetItem("0"));
     ui->tableWidget->setItem(row, 4, new QTableWidgetItem("0"));
-
+    ui->tableWidget->setItem(row, 5, new QTableWidgetItem("-"));
+    ui->tableWidget->setItem(row, 5, new QTableWidgetItem(QDateTime::currentDateTime().toString("HH:mm:ss")));
     totalAgents++;
     onlineAgents++;
     updateStatus();
@@ -82,6 +84,7 @@ void MainWindow::onMetricsReceived(const QString &name, int cpu, int ram)
         if(ui->tableWidget->item(i,1)->text() == name){
             ui->tableWidget->item(i,3)->setText(QString::number(cpu));
             ui->tableWidget->item(i,4)->setText(QString::number(ram));
+            ui->tableWidget->item(i,5)->setText(QDateTime::currentDateTime().toString());
 
             statusBar()->showMessage(QString("Received cpu and ram usage for %1 server agent").arg(name));
             break;
