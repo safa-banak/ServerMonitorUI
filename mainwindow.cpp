@@ -13,6 +13,7 @@
 #include <QStatusBar>
 #include <QColor>
 #include <QDateTime>
+#include <QVariant>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),totalAgents(0),onlineAgents(0)
@@ -20,6 +21,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     tcpServer = new TcpServer(this);
+
     //tcpServer->start(12345);
     bool starterted = tcpServer->start(12345);
     if(starterted)
@@ -32,9 +34,14 @@ MainWindow::MainWindow(QWidget *parent)
         statusBar()->showMessage("Failed to start server on port 12345");
         //qDebug() << "Failed message set";
     }
+
+    elapsedTimer = new QTimer(this);
+    connect(elapsedTimer, &QTimer::timeout, this, &MainWindow::updateElapsedTime);
+    elapsedTimer->start(1000);
+
     //Set up table columns
-    ui->tableWidget->setColumnCount(6);
-    ui->tableWidget->setHorizontalHeaderLabels({"Status","Name", "IP", "CPU", "RAM", "Last Update"}); // وقتی کاربر روی این دکمه کلیک کرد تابع addServer روی this صدا زده میشه
+    ui->tableWidget->setColumnCount(7);
+    ui->tableWidget->setHorizontalHeaderLabels({"Status","Name", "IP", "CPU", "RAM", "Last Update", "Elapsed"}); // وقتی کاربر روی این دکمه کلیک کرد تابع addServer روی this صدا زده میشه
 
     // Connect buttons
     connect(tcpServer, &TcpServer::agentConnected, this, &MainWindow::addServer);
@@ -72,6 +79,8 @@ void MainWindow::addServer(const QString &name, const QString &ip)
     ui->tableWidget->setItem(row, 4, new QTableWidgetItem("0"));
     ui->tableWidget->setItem(row, 5, new QTableWidgetItem("-"));
     ui->tableWidget->setItem(row, 5, new QTableWidgetItem(QDateTime::currentDateTime().toString("HH:mm:ss")));
+    ui->tableWidget->setItem(row, 6, new QTableWidgetItem("-"));
+
     totalAgents++;
     onlineAgents++;
     updateStatus();
@@ -82,9 +91,10 @@ void MainWindow::onMetricsReceived(const QString &name, int cpu, int ram)
 {
     for(int i = 0; i < ui->tableWidget->rowCount(); ++i){
         if(ui->tableWidget->item(i,1)->text() == name){
-            ui->tableWidget->item(i,3)->setText(QString::number(cpu));
-            ui->tableWidget->item(i,4)->setText(QString::number(ram));
+            ui->tableWidget->item(i,3)->setText(QString::number(cpu) + " %");
+            ui->tableWidget->item(i,4)->setText(QString::number(ram) + " Mb");
             ui->tableWidget->item(i,5)->setText(QDateTime::currentDateTime().toString());
+            ui->tableWidget->item(i,5)->setData(Qt::UserRole, QDateTime::currentDateTime());
 
             statusBar()->showMessage(QString("Received cpu and ram usage for %1 server agent").arg(name));
             break;
@@ -203,6 +213,33 @@ void MainWindow::clearOfflineAgents()
     }
     updateStatus();
     statusBar()->showMessage("Offline agents cleard.");
+}
+
+void MainWindow::updateElapsedTime()
+{
+    for(int i = 0; i < ui->tableWidget->rowCount(); ++i){
+        QVariant data = ui->tableWidget->item(i, 5)->data(Qt::UserRole);
+        if (data.canConvert<QDateTime>()){
+            QDateTime lastTime = data.toDateTime();
+            qint64 secs = lastTime.secsTo(QDateTime::currentDateTime());
+
+            QString elapsedText;
+
+            if (secs<5)
+                elapsedText = "just now";
+            else if (secs < 60)
+                elapsedText = QString("%1s ago").arg(secs);
+            else if (secs < 3600)
+                elapsedText = QString("%1m ago").arg(secs/60);
+            else if (secs < 86400)
+                elapsedText = QString("%1h ago").arg(secs/3600);
+            else
+                elapsedText = QString("%1d ago").arg(secs/86400);
+
+            ui->tableWidget->item(i, 6)->setText(elapsedText);
+        }
+
+    }
 }
 
 MainWindow::~MainWindow()

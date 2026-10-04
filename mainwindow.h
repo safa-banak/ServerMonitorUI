@@ -27,10 +27,11 @@ private slots:
     void clearOfflineAgents();
 private:
     Ui::MainWindow *ui;
-    QTimer *autoRefreshTimer;
+    QTimer *elapsedTimer;
     TcpServer *tcpServer;
     void updateStatus();
     int totalAgents;
     int onlineAgents;
+    void updateElapsedTime();
 };
 #endif // MAINWINDOW_H
