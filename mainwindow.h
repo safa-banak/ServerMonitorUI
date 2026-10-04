@@ -4,6 +4,10 @@
 #include "tcpserver.h"
 #include <QMainWindow>
 #include <QTimer>
+#include <QIcon>
+#include <QPixmap>
+#include <QPainter>
+#include <QColor>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -33,5 +37,7 @@ private:
     int totalAgents;
     int onlineAgents;
     void updateElapsedTime();
+    QIcon makeCircleIcon(const QColor &color);
+
 };
 #endif // MAINWINDOW_H

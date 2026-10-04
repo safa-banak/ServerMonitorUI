@@ -14,6 +14,9 @@
 #include <QColor>
 #include <QDateTime>
 #include <QVariant>
+#include <QIcon>
+#include <QPixmap>
+#include <QPainter>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),totalAgents(0),onlineAgents(0)
@@ -60,8 +63,10 @@ void MainWindow::addServer(const QString &name, const QString &ip)
         if(ui->tableWidget->item(i,1)->text() == name){
             // قبلا هست ، فقط آی پی رو آپدیت کن
             ui->tableWidget->item(i,2)->setText(ip);
-            ui->tableWidget->item(i, 0)->setBackground(QColor("#C6EFCE"));
-            ui->tableWidget->item(i,0)->setText("On");
+            //ui->tableWidget->item(i, 0)->setBackground(QColor("#C6EFCE"));
+            ui->tableWidget->item(i, 0)->setText("On");
+            ui->tableWidget->item(i, 0)->setIcon(makeCircleIcon(Qt::green));
+
             onlineAgents++;
             updateStatus();
             statusBar()->showMessage("Agent reconnected: " + name);
@@ -71,8 +76,11 @@ void MainWindow::addServer(const QString &name, const QString &ip)
     // Agent جدید یک ردیف اضافه کن
     int row = ui->tableWidget->rowCount();
     ui->tableWidget->insertRow(row);
-    ui->tableWidget->setItem(row, 0, new QTableWidgetItem("New"));
-    ui->tableWidget->item(row, 0)->setBackground(QColor("#FFC7CE"));
+
+    QTableWidgetItem *statusItem = new QTableWidgetItem("new");
+    statusItem->setIcon(makeCircleIcon(Qt::blue));
+
+    ui->tableWidget->setItem(row, 0, statusItem);
     ui->tableWidget->setItem(row, 1, new QTableWidgetItem(name));
     ui->tableWidget->setItem(row, 2, new QTableWidgetItem(ip));
     ui->tableWidget->setItem(row, 3, new QTableWidgetItem("0"));
@@ -80,6 +88,7 @@ void MainWindow::addServer(const QString &name, const QString &ip)
     ui->tableWidget->setItem(row, 5, new QTableWidgetItem("-"));
     ui->tableWidget->setItem(row, 5, new QTableWidgetItem(QDateTime::currentDateTime().toString("HH:mm:ss")));
     ui->tableWidget->setItem(row, 6, new QTableWidgetItem("-"));
+
 
     totalAgents++;
     onlineAgents++;
@@ -92,7 +101,7 @@ void MainWindow::onMetricsReceived(const QString &name, int cpu, int ram)
     for(int i = 0; i < ui->tableWidget->rowCount(); ++i){
         if(ui->tableWidget->item(i,1)->text() == name){
             ui->tableWidget->item(i,3)->setText(QString::number(cpu) + " %");
-            ui->tableWidget->item(i,4)->setText(QString::number(ram) + " Mb");
+            ui->tableWidget->item(i,4)->setText(QString::number(ram) + " MB");
             ui->tableWidget->item(i,5)->setText(QDateTime::currentDateTime().toString());
             ui->tableWidget->item(i,5)->setData(Qt::UserRole, QDateTime::currentDateTime());
 
@@ -106,12 +115,11 @@ void MainWindow::onAgentDisconnected(const QString &name)
 {
     for(int i = 0; i < ui->tableWidget->rowCount(); ++i){
         if(ui->tableWidget->item(i,1)->text() == name){
-            //ui->tableWidget->item(i, 0)->setText(QString("%1 (OffLine)").arg(name));
             // تغییر رنگ پس زمینه همه این ردیف به زرد
-            ui->tableWidget->item(i, 0)->setBackground(QColor("#FFEB9C"));
-            ui->tableWidget->item(i,0)->setText(" Off ");
-            ui->tableWidget->item(i,3)->setText(" 0 ");
-            ui->tableWidget->item(i,4)->setText(" 0 ");
+            ui->tableWidget->item(i,0)->setText("Off");
+            ui->tableWidget->item(i, 0)->setIcon(makeCircleIcon(Qt::yellow));
+            ui->tableWidget->item(i,3)->setText(" 0 %");
+            ui->tableWidget->item(i,4)->setText(" 0 MB");
 
             onlineAgents--;
             updateStatus();
@@ -206,7 +214,7 @@ void MainWindow::clearAllAgents()
 void MainWindow::clearOfflineAgents()
 {
     for(int i = ui->tableWidget->rowCount()-1; i >= 0; --i){
-        if(ui->tableWidget->item(i,0)->text() == " Off " ){
+        if(ui->tableWidget->item(i,0)->text() == "Off" ){
             ui->tableWidget->removeRow(i);
             totalAgents--;
         }
@@ -240,6 +248,23 @@ void MainWindow::updateElapsedTime()
         }
 
     }
+}
+
+QIcon MainWindow::makeCircleIcon(const QColor &color)
+{
+    int size = 12 ;            // اندازه دایره به پیکسل
+    QPixmap pixmap(size, size);
+    pixmap.fill(Qt::transparent);   // پس زمینه شفاف
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing); //لبه های صاف
+
+    painter.setBrush(color);
+    painter.setPen(Qt::NoPen);
+    painter.drawEllipse(0, 0, size, size);
+    painter.end();
+
+    return QIcon(pixmap);
 }
 
 MainWindow::~MainWindow()
