@@ -20,20 +20,19 @@ Built with **Qt6** and **C++17**.
 
 
 ## How It Works
-
+```
 [ServerAgent] ──TCP──▶ [ServerMonitor Dashboard]
-│
-├── Collects local CPU usage (via GetSystemTimes)
-├── Collects local RAM usage (via GlobalMemoryStatusEx)
-└── Sends a JSON packet every 2 seconds:
-{
-"agent": "agent-01",
-"cpu": 4,
-"ram": 7512,
-"timestamp": "2026-10-05T22:32:15"
-}
-
-
+    │
+    ├── Collects local CPU usage (via GetSystemTimes)
+    ├── Collects local RAM usage (via GlobalMemoryStatusEx)
+    └── Sends a JSON packet every 2 seconds:
+        {
+          "agent": "agent-01",
+          "cpu": 4,
+          "ram": 7512,
+          "timestamp": "2026-10-05T22:32:15"
+        }
+```
 
 
 ## Requirements
@@ -49,10 +48,12 @@ Built with **Qt6** and **C++17**.
 Open the project in Qt Creator and press Run.
 
 Or build manually:
+
+```
 mkdir build && cd build
 cmake ..
 cmake --build .
-
+```
 
 
 ## How to Use
