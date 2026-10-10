@@ -75,7 +75,9 @@ cmake --build .
 - [x] Real CPU/RAM metrics via Windows API
 - [x] JSON-formatted packets
 - [x] Timestamped activity log
-- [ ] Persistent configuration (save IP/port/name)
+- [ ] Persistent configuration (save IP/port/name)  
+- [ ] Auto-generate agent name from MAC address    
+- [ ] Auto-discovery of dashboard via UDP broadcast 
 - [ ] Auto-reconnect on connection loss
 - [ ] Cross-platform support (Linux/macOS)
 - [ ] Configurable send interval

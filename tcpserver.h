@@ -20,7 +20,9 @@ public:
 signals:
     void agentConnected(const QString &name, const QString &ip);
     void agentDisconnected(const QString &name);
-    void metricsReceived(const QString &name, int cpu, int ram);
+    void metricsReceived(const QString &name, int cpu,
+                         int ram, int ramTotal,
+                         int disk, int diskTotal);
     void logMessage(const QString &message);
 
 private slots:

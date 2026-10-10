@@ -23,7 +23,9 @@ public:
 
 private slots:
     void addServer(const QString &name, const QString &ip);
-    void onMetricsReceived(const QString &name, int cpu, int ram);
+    void onMetricsReceived(const QString &name, int cpu,
+                           int ram, int ramTotal,
+                           int disk, int diskTotal);
     void onAgentDisconnected(const QString &name);
     void saveServers();
     void loadServers();

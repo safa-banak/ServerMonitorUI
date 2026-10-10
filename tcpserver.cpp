@@ -77,6 +77,9 @@ void TcpServer::handleReadyRead(QTcpSocket *client)
         QString name = obj["agent"].toString();
         int cpu = obj["cpu"].toInt();
         int ram = obj["ram"].toInt();
+        int ramTotal = obj["ramTotal"].toInt();
+        int disk = obj["disk"].toInt();
+        int diskTotal = obj["diskTotal"].toInt();
 
         // اولین پیام: ثبت نام Agent
         if (!socketToName.contains(client)) {
@@ -84,7 +87,7 @@ void TcpServer::handleReadyRead(QTcpSocket *client)
             emit agentConnected(name, client->peerAddress().toString());
         }
 
-        emit metricsReceived(name, cpu, ram);
+        emit metricsReceived(name, cpu, ram, ramTotal, disk, diskTotal);
     }
 }
 
