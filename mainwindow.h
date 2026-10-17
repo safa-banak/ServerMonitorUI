@@ -8,10 +8,14 @@
 #include <QPixmap>
 #include <QPainter>
 #include <QColor>
+#include <QCloseEvent>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
+
+class AlertWindow;                // forward declaration
+class TcpServer;                  // forward declaration
 
 class MainWindow : public QMainWindow
 {
@@ -20,7 +24,8 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-
+protected:
+    void closeEvent(QCloseEvent *event) override;
 private slots:
     void addServer(const QString &name, const QString &ip);
     void onMetricsReceived(const QString &name, int cpu,
@@ -31,9 +36,11 @@ private slots:
     void loadServers();
     void clearAllAgents();
     void clearOfflineAgents();
+    void testAlert();
 private:
     Ui::MainWindow *ui;
     QTimer *elapsedTimer;
+    AlertWindow *alertWindow;
     TcpServer *tcpServer;
     void updateStatus();
     int totalAgents;

@@ -70,6 +70,13 @@
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_testAlert">
+       <property name="text">
+        <string>Simulate Alert</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </widget>
   </widget>

@@ -12,6 +12,7 @@ qt_add_executable(ServerMonitorUI
     mainwindow.h
     mainwindow.ui
     tcpserver.h tcpserver.cpp
+    alertwindow.h alertwindow.cpp
 )
 
 target_link_libraries(ServerMonitorUI

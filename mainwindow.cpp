@@ -1,5 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+
+#include "alertwindow.h"
+#include "tcpserver.h"
 #include <QInputDialog>
 #include <QRandomGenerator>
 #include <QFile>
@@ -18,11 +21,16 @@
 #include <QPixmap>
 #include <QPainter>
 
+// آستانه‌ها (برای تست، موقتاً کمشون کن)
+const int WARNING_THRESHOLD = 80;
+const int CRITICAL_THRESHOLD = 90;
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),totalAgents(0),onlineAgents(0)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    alertWindow = new AlertWindow(this);
     tcpServer = new TcpServer(this);
 
     //tcpServer->start(12345);
@@ -55,6 +63,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->pushButton_load, &QPushButton::clicked, this, &MainWindow::loadServers);
     connect(ui->pushButton_clearAll, &QPushButton::clicked, this, &MainWindow::clearAllAgents);
     connect(ui->pushButton_clearOff, &QPushButton::clicked, this, &MainWindow::clearOfflineAgents);
+    connect(ui->pushButton_testAlert, &QPushButton::clicked, this, &MainWindow::testAlert);
 }
 
 void MainWindow::addServer(const QString &name, const QString &ip)
@@ -102,14 +111,16 @@ void MainWindow::onMetricsReceived(const QString &name, int cpu,
                                    int ram, int ramTotal,
                                    int disk, int diskTotal)
 {
+    int ramPercent = (ramTotal > 0) ? ( ram * 100 / ramTotal ) : 0;
+    int diskPercent = ( diskTotal > 0) ? (disk * 100 / diskTotal) : 0;
+
     for(int i = 0; i < ui->tableWidget->rowCount(); ++i){
         if(ui->tableWidget->item(i,1)->text() == name){
+
             ui->tableWidget->item(i,3)->setText(QString::number(cpu) + " %");
 
-            int ramPercent = (ramTotal > 0) ? ( ram * 100 / ramTotal ) : 0;
             ui->tableWidget->item(i,4)->setText(QString("%1 MB (%2 %)").arg(ram).arg(ramPercent));
 
-            int diskPercent = ( diskTotal > 0) ? (disk * 100 / diskTotal) : 0;
             ui->tableWidget->item(i,5)->setText(QString("%1 GB (%2 %)").arg(disk).arg(diskPercent));
 
             QDateTime now = QDateTime::currentDateTime();
@@ -120,6 +131,27 @@ void MainWindow::onMetricsReceived(const QString &name, int cpu,
             break;
         }
     }
+    bool anyAlert = (cpu > WARNING_THRESHOLD) ||
+                    (ramPercent > WARNING_THRESHOLD) ||
+                    (diskPercent > WARNING_THRESHOLD);
+
+    bool isCritical = (cpu > CRITICAL_THRESHOLD) ||
+                      (ramPercent > CRITICAL_THRESHOLD) ||
+                      (diskPercent > CRITICAL_THRESHOLD);
+    //bool anyAlert = (cpu > 80) || (ramPercent > 80) || (diskPercent > 80);
+    //bool isCritical = (cpu > 90) || (ramPercent > 90) || (diskPercent > 90);
+    if(anyAlert) {
+        alertWindow->updateAgentAlert(name, cpu, ramPercent, diskPercent);
+        if(!alertWindow->isVisible()){
+            alertWindow->show();
+        }
+        if(isCritical){
+            alertWindow->restoreFromMinimized();
+        }
+    }else{
+        alertWindow->removeAgent(name);
+    }
+
 }
 
 void MainWindow::onAgentDisconnected(const QString &name)
@@ -280,6 +312,20 @@ QIcon MainWindow::makeCircleIcon(const QColor &color)
     return QIcon(pixmap);
 }
 
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    if(alertWindow) {
+        alertWindow->close();  // hide() !
+        delete alertWindow;
+        alertWindow = nullptr;
+    }
+
+    if(tcpServer)
+        tcpServer->stop();
+
+    QMainWindow::closeEvent(event);
+}
+
 MainWindow::~MainWindow()
 {
     // این شرط و دستور بعد آن لازم نیست به لحاظ فنی اما برای شفافیت کد بد نیست
@@ -287,4 +333,30 @@ MainWindow::~MainWindow()
         tcpServer->stop();
 
     delete ui;
+}
+
+void MainWindow::testAlert()
+{
+    // ۱. اول یک هشدار Warning برای Agent دوم می‌سازیم
+    alertWindow->updateAgentAlert("test-agent-02", 85, 82, 81);
+    if (!alertWindow->isVisible()) alertWindow->show();
+
+    // ۲. بعد از ۲ ثانیه، یک هشدار Critical برای Agent اول می‌سازیم
+    QTimer::singleShot(2000, this, [this]() {
+        alertWindow->updateAgentAlert("test-agent-01", 95, 92, 91);
+        alertWindow->restoreFromMinimized();
+    });
+
+    // ۳. بعد از ۴ ثانیه، مقادیر Agent دوم رو نرمال می‌کنیم تا ردیفش حذف بشه
+    QTimer::singleShot(4000, this, [this]() {
+        alertWindow->removeAgent("test-agent-02");
+    });
+
+    // ۴. بعد از ۶ ثانیه، همه رو پاک می‌کنیم
+    QTimer::singleShot(6000, this, [this]() {
+        alertWindow->removeAgent("test-agent-01");
+        statusBar()->showMessage("Test alerts cleared.");
+    });
+
+    statusBar()->showMessage("Test alerts triggered...");
 }
