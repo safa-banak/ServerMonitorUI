@@ -59,8 +59,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(tcpServer, &TcpServer::agentConnected, this, &MainWindow::addServer);
     connect(tcpServer, &TcpServer::metricsReceived, this, &MainWindow::onMetricsReceived);
     connect(tcpServer, &TcpServer::agentDisconnected, this, &MainWindow::onAgentDisconnected);
-    connect(ui->pushButton_save, &QPushButton::clicked, this, &MainWindow::saveServers);
-    connect(ui->pushButton_load, &QPushButton::clicked, this, &MainWindow::loadServers);
+    connect(ui->pushButton_export , &QPushButton::clicked, this, &MainWindow::exportReport);
+    //connect(ui->pushButton_load, &QPushButton::clicked, this, &MainWindow::loadServers);
     connect(ui->pushButton_clearAll, &QPushButton::clicked, this, &MainWindow::clearAllAgents);
     connect(ui->pushButton_clearOff, &QPushButton::clicked, this, &MainWindow::clearOfflineAgents);
     connect(ui->pushButton_testAlert, &QPushButton::clicked, this, &MainWindow::testAlert);
@@ -117,11 +117,19 @@ void MainWindow::onMetricsReceived(const QString &name, int cpu,
     for(int i = 0; i < ui->tableWidget->rowCount(); ++i){
         if(ui->tableWidget->item(i,1)->text() == name){
 
-            ui->tableWidget->item(i,3)->setText(QString::number(cpu) + " %");
+            QTableWidgetItem *cpuItem = ui->tableWidget->item(i, 3);
+            cpuItem->setText(QString::number(cpu) + " %");
+            cpuItem->setData(Qt::UserRole, cpu);
 
-            ui->tableWidget->item(i,4)->setText(QString("%1 MB (%2 %)").arg(ram).arg(ramPercent));
+            QTableWidgetItem *ramItem = ui->tableWidget->item(i, 4);
+            ramItem->setText(QString("%1 MB (%2 %)").arg(ram).arg(ramPercent));
+            ramItem->setData(Qt::UserRole, ram);
+            ramItem->setData(Qt::UserRole +1, ramPercent);
 
-            ui->tableWidget->item(i,5)->setText(QString("%1 GB (%2 %)").arg(disk).arg(diskPercent));
+            QTableWidgetItem *diskItem = ui->tableWidget->item(i, 5);
+            diskItem->setText(QString("%1 GB (%2 %)").arg(disk).arg(diskPercent));
+            diskItem->setData(Qt::UserRole, disk);
+            diskItem->setData(Qt::UserRole + 1, diskPercent);
 
             QDateTime now = QDateTime::currentDateTime();
             ui->tableWidget->item(i,6)->setText(now.toString("HH:mm:ss"));
@@ -162,8 +170,13 @@ void MainWindow::onAgentDisconnected(const QString &name)
             ui->tableWidget->item(i, 0)->setText("Off");
             ui->tableWidget->item(i, 0)->setIcon(makeCircleIcon(Qt::yellow));
             ui->tableWidget->item(i, 3)->setText(" 0 ");
+            ui->tableWidget->item(i, 3)->setData(Qt::UserRole, 0);
             ui->tableWidget->item(i, 4)->setText(" 0 ");
+            ui->tableWidget->item(i, 4)->setData(Qt::UserRole, 0);
+            ui->tableWidget->item(i, 4)->setData(Qt::UserRole + 1, 0);
             ui->tableWidget->item(i, 5)->setText(" 0 ");
+            ui->tableWidget->item(i, 5)->setData(Qt::UserRole, 0);
+            ui->tableWidget->item(i, 5)->setData(Qt::UserRole + 1, 0);
 
             onlineAgents--;
             updateStatus();
@@ -178,36 +191,45 @@ void MainWindow::updateStatus()
     ui->label_status->setText(QString("Online : %1  /  Total : %2 ").arg(onlineAgents).arg(totalAgents));
 }
 
-void MainWindow::saveServers()
+void MainWindow::exportReport()
 {
-    QString fileName = QFileDialog::getSaveFileName(this, "Save Servers", "", "JSON Files (*.json)");
+    QString fileName = QFileDialog::getSaveFileName(this, "Export Report", "", "JSON Files (*.json)");
     if (fileName.isEmpty())
         return;
 
     QJsonArray servers;
     for (int i = 0; i < ui->tableWidget->rowCount(); ++i) {
         QJsonObject server;
+
         server["name"] = ui->tableWidget->item(i, 1)->text();
         server["ip"] = ui->tableWidget->item(i, 2)->text();
-        server["cpu"] = ui->tableWidget->item(i, 3)->text().toInt();
-        server["ram"] = ui->tableWidget->item(i, 4)->text().toInt();
-        //server[]
+        server["status"] = ui->tableWidget->item(i, 0)->text();
+        server["cpu_percent"] = ui->tableWidget->item(i, 3)->data(Qt::UserRole).toInt();
+        server["ram_used_mb"] = ui->tableWidget->item(i, 4)->data(Qt::UserRole).toInt();
+        server["ram_percent"] = ui->tableWidget->item(i, 4)->data(Qt::UserRole +1).toInt();
+        server["disk_used_gb"] = ui->tableWidget->item(i, 5)->data(Qt::UserRole).toInt();
+        server["disk_percent"]= ui->tableWidget->item(i, 5)->data(Qt::UserRole +1).toInt();
+
         servers.append(server);
     }
 
-    QJsonDocument doc(servers);
+    QJsonObject rootObject;
+    rootObject["export_timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    rootObject["servers"] = servers;
+
+    QJsonDocument doc(rootObject);
     QFile file(fileName);
     if (!file.open(QIODevice::WriteOnly)) {
         QMessageBox::warning(this, "Error", "Could not open file for writing.");
         return;
     }
-    file.write(doc.toJson());
+    file.write(doc.toJson(QJsonDocument::Indented));   // Indented برای خوانایی بهتر
     file.close();
 
-    statusBar()->showMessage(QString("Saved %1 servers to %2").arg(servers.size()).arg(fileName));
+    statusBar()->showMessage(QString("ٍExported %1 servers to %2").arg(servers.size()).arg(fileName));
 }
 
-void MainWindow::loadServers()
+/*void MainWindow::loadServers()
 {
     QString fileName = QFileDialog::getOpenFileName(this, "Load Servers", "", "JSON Files (*.json)");
     if (fileName.isEmpty())
@@ -243,7 +265,7 @@ void MainWindow::loadServers()
     }
 
     statusBar()->showMessage(QString("Loaded %1 servers from %2").arg(servers.size()).arg(fileName));
-}
+}*/
 
 void MainWindow::clearAllAgents()
 {

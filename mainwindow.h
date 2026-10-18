@@ -32,8 +32,8 @@ private slots:
                            int ram, int ramTotal,
                            int disk, int diskTotal);
     void onAgentDisconnected(const QString &name);
-    void saveServers();
-    void loadServers();
+    void exportReport();
+    //void loadServers();
     void clearAllAgents();
     void clearOfflineAgents();
     void testAlert();
