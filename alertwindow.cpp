@@ -3,6 +3,7 @@
 #include <QHeaderView>
 #include <QBrush>
 #include <QColor>
+#include <QSettings>
 
 AlertWindow::AlertWindow(QWidget *parent)
     : QWidget{parent, Qt::Window | Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint}
@@ -40,8 +41,11 @@ int AlertWindow::findRowByName(const QString &name)
 
 QColor AlertWindow::severityColor(int percent)
 {
-    if (percent > 90) return QColor(QString("#8B0000"));     // Critical
-    if (percent > 80) return QColor(QString("#8B8000"));     // warning
+    QSettings settings("SafaBanak", "ServerMonitorDashboard");
+    int warningThreshold = settings.value("warningThreshold", 80).toInt();
+    int criticalThreshold = settings.value("criticalThreshold", 90).toInt();
+    if (percent > criticalThreshold) return QColor(QString("#8B0000"));     // Critical
+    if (percent > warningThreshold) return QColor(QString("#8B8000"));     // warning
     return QColor();                                // Normal
 }
 

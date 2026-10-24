@@ -10,16 +10,18 @@ Agents run on remote machines, collect CPU, RAM, and Disk metrics, and send them
 
 ## Features
 
-- Real-time CPU, RAM, and Disk monitoring (absolute + percentage)
-- Multi-agent support (tested with 9+ simultaneous agents)
-- TCP-based communication between agents and dashboard
+- Real-time CPU, RAM, and Disk monitoring
+- Multi-agent support (tested with multiple simultaneous agents)
+- TCP-based communication using structured JSON packets
 - Live status indicators (New / Online / Offline)
 - Relative time display (Elapsed column)
-- **Real-time Alert Window for resource thresholds (Warning > 80%, Critical > 90%)**
-- **Auto-hide Alert Window when all alerts are resolved**
-- **Simulate Alert button for easy testing and demos**
-- Persistent agent configuration (via QSettings) and auto-generated agent names (via MAC address)
-- Save and load agent lists as JSON
+- Auto-sizing table columns for optimal readability
+- **Alert system with fully configurable Warning and Critical thresholds**
+- **Settings tab with dynamic threshold validation (Warning < Critical)**
+- **Automatic Alert Window that restores on critical alerts**
+- **Kick protocol: cleanly disconnects agents via JSON command**
+- Manual simulation button for testing alerts
+- Structured JSON export for data analysis
 - Clear offline or all agents with one click
 
 
@@ -72,12 +74,14 @@ cmake --build .
 ## Roadmap
 
 - [x] TCP server and agent communication
-- [x] Real CPU, RAM, and Disk metrics via Windows API
+- [x] Real CPU/RAM metrics via Windows API
+- [x] Disk metrics
 - [x] Status coloring and elapsed time display
-- [x] Multi-agent support
-- [x] Alerts for high resource usage (Warning/Critical)
-- [ ] Agent configuration persistence (save IP/port/name)
-- [ ] Auto-reconnect on connection loss
+- [x] Alert Window with Warning/Critical levels
+- [x] Settings tab with dynamic thresholds
+- [x] Kick protocol for clean disconnection
+- [x] JSON export for reporting
+- [ ] Historical logging and trend analysis
 - [ ] Cross-platform agent (Linux/macOS)
 
 

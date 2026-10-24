@@ -16,6 +16,7 @@ public:
     bool start(quint16 port);
     void stop();
     bool isListening() const;
+    void kickAllClients();
 
 signals:
     void agentConnected(const QString &name, const QString &ip);

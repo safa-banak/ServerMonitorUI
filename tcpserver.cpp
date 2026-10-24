@@ -100,3 +100,24 @@ void TcpServer::handleClientDisconnected(QTcpSocket *client)
 
     client->deleteLater();
 }
+
+void TcpServer::kickAllClients()
+{
+    for (auto *client : socketToName.keys()) {
+        // ساخت پیام Json
+        QJsonObject obj;
+        obj["command"] = "disconnect";
+        QJsonDocument doc(obj);
+
+        //ارسال پیام به همراه \n
+        client->write(doc.toJson(QJsonDocument::Compact) + "\n");
+        client->flush();
+
+        // به کلاینت فرصت بده تا پیام رو بخونه و خودش رو قطع کنه
+        client->waitForBytesWritten(100);
+
+        // بعد از ارسال، قطعش کن
+        client->disconnectFromHost();
+    }
+    socketToName.clear();
+}

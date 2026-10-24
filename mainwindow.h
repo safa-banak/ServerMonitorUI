@@ -37,6 +37,7 @@ private slots:
     void clearAllAgents();
     void clearOfflineAgents();
     void testAlert();
+    void saveSettings();
 private:
     Ui::MainWindow *ui;
     QTimer *elapsedTimer;
@@ -47,6 +48,7 @@ private:
     int onlineAgents;
     void updateElapsedTime();
     QIcon makeCircleIcon(const QColor &color);
-
+    void loadSettings();
+    void setupThresholdValidation();
 };
 #endif // MAINWINDOW_H

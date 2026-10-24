@@ -20,16 +20,18 @@
 #include <QIcon>
 #include <QPixmap>
 #include <QPainter>
-
-// آستانه‌ها (برای تست، موقتاً کمشون کن)
-const int WARNING_THRESHOLD = 80;
-const int CRITICAL_THRESHOLD = 90;
+#include <QSettings>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),totalAgents(0),onlineAgents(0)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    loadSettings();
+    connect(ui->pushButton_saveSettings, &QPushButton::clicked, this, &MainWindow::saveSettings);
+    setupThresholdValidation();
+
     alertWindow = new AlertWindow(this);
     tcpServer = new TcpServer(this);
 
@@ -54,6 +56,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableWidget->setColumnCount(8);
     ui->tableWidget->setHorizontalHeaderLabels({"Status","Name", "IP", "CPU", "RAM",
                                                 "Disk", "Last Update", "Elapsed"}); // وقتی کاربر روی این دکمه کلیک کرد تابع addServer روی this صدا زده میشه
+    ui->tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);   // تنظیم رفتار ستون‌ها: به اندازه محتوا باشن
+    ui->tableWidget->horizontalHeader()->setStretchLastSection(true);           // ۲. اگر بعد از تنظیم محتوا، فضای خالی سمت راست موند، ستون آخر (Elapsed) اون فضا رو پر کنه
+    ui->tableWidget->setStyleSheet("QTableWidget::item { padding: 5px; }");
+    ui->tableWidget->horizontalHeader()->setMinimumSectionSize(50);              // تعیین حداقل عرض برای ستون‌ها تا بیش از حد باریک نشن
 
     // Connect buttons
     connect(tcpServer, &TcpServer::agentConnected, this, &MainWindow::addServer);
@@ -139,13 +145,16 @@ void MainWindow::onMetricsReceived(const QString &name, int cpu,
             break;
         }
     }
-    bool anyAlert = (cpu > WARNING_THRESHOLD) ||
-                    (ramPercent > WARNING_THRESHOLD) ||
-                    (diskPercent > WARNING_THRESHOLD);
 
-    bool isCritical = (cpu > CRITICAL_THRESHOLD) ||
-                      (ramPercent > CRITICAL_THRESHOLD) ||
-                      (diskPercent > CRITICAL_THRESHOLD);
+    int warningThreshold = ui->spinBox_warning->value();
+    int criticalThreshold = ui->spinBox_critical->value();
+    bool anyAlert = (cpu > warningThreshold) ||
+                    (ramPercent > warningThreshold) ||
+                    (diskPercent > warningThreshold);
+
+    bool isCritical = (cpu > criticalThreshold) ||
+                      (ramPercent > criticalThreshold) ||
+                      (diskPercent > criticalThreshold);
     //bool anyAlert = (cpu > 80) || (ramPercent > 80) || (diskPercent > 80);
     //bool isCritical = (cpu > 90) || (ramPercent > 90) || (diskPercent > 90);
     if(anyAlert) {
@@ -177,6 +186,8 @@ void MainWindow::onAgentDisconnected(const QString &name)
             ui->tableWidget->item(i, 5)->setText(" 0 ");
             ui->tableWidget->item(i, 5)->setData(Qt::UserRole, 0);
             ui->tableWidget->item(i, 5)->setData(Qt::UserRole + 1, 0);
+            alertWindow->updateAgentAlert(name, 0, 0, 0);
+            alertWindow->removeAgent(name);
 
             onlineAgents--;
             updateStatus();
@@ -268,7 +279,11 @@ void MainWindow::exportReport()
 }*/
 
 void MainWindow::clearAllAgents()
-{
+{   //اول به سرور میگیم که کلاینتهارو اخراج کنه
+    if (tcpServer) {
+        tcpServer->kickAllClients();
+    }
+    // سپس جدول رو پاک کن
     ui->tableWidget->setRowCount(0);
     totalAgents = 0;
     onlineAgents = 0;
@@ -381,4 +396,38 @@ void MainWindow::testAlert()
     });
 
     statusBar()->showMessage("Test alerts triggered...");
+}
+
+void MainWindow::saveSettings()
+{
+    QSettings settings("SafaBanak", "ServerMonitorDashboard");
+
+    settings.setValue("warningThreshold", ui->spinBox_warning->value());
+
+    settings.setValue("criticalThreshold", ui->spinBox_critical->value());
+
+    statusBar()->showMessage("Settings saved successfully.");
+}
+
+void MainWindow::loadSettings()
+{
+    QSettings settings("SafaBanak", "ServerMonitorDashboard");
+
+    int warning = settings.value("warningThreshold", 80).toInt();
+    int critical = settings.value("criticalThreshold", 90).toInt();
+
+    ui->spinBox_warning->setValue(warning);
+    ui->spinBox_critical->setValue(critical);
+}
+void MainWindow::setupThresholdValidation()
+{
+    connect(ui->spinBox_warning, QOverload<int>::of(&QSpinBox::valueChanged)
+            ,this ,[this](int value){
+        ui->spinBox_critical->setMinimum(value +1);
+    });
+
+    connect(ui->spinBox_critical, QOverload<int>::of(&QSpinBox::valueChanged)
+            , this, [this](int value){
+        ui->spinBox_warning->setMaximum(value - 1);
+    });
 }
