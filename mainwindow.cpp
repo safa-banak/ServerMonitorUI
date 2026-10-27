@@ -21,12 +21,47 @@
 #include <QPixmap>
 #include <QPainter>
 #include <QSettings>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QDebug>
+#include <QString>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),totalAgents(0),onlineAgents(0)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    ui->tabWidget->setCurrentIndex(0);
+
+    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+    db.setDatabaseName("monitoring.db");
+
+    if(!db.open()) {
+        qDebug() << "Failed to open database:" << db.lastError().text();
+    } else {
+        QSqlQuery query;
+        QString createTable = "CREATE TABLE IF NOT EXISTS metrics ("
+                              "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                              "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, "
+                              "agent_name TEXT, "
+                              "cpu INTEGER, "
+                              "ram INTEGER, "
+                              "disk INTEGER)";
+        if (!query.exec(createTable)) {
+            qDebug() << "Failed to create table:" << query.lastError().text();
+        }
+    }
+
+    // تنظیمات ظاهری جدول تاریخچه (فقط یک بار در سازنده)
+    ui->tableWidget_history->setColumnCount(5);
+    ui->tableWidget_history->setHorizontalHeaderLabels({"Time", "Agent", "CPU", "RAM", "Disk"});
+    ui->tableWidget_history->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->tableWidget_history->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableWidget_history->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->tableWidget_history->horizontalHeader()->setStretchLastSection(true);
+    ui->tableWidget_history->setStyleSheet("QTableWidget::item { padding: 5px; }");
 
     loadSettings();
     connect(ui->pushButton_saveSettings, &QPushButton::clicked, this, &MainWindow::saveSettings);
@@ -70,6 +105,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->pushButton_clearAll, &QPushButton::clicked, this, &MainWindow::clearAllAgents);
     connect(ui->pushButton_clearOff, &QPushButton::clicked, this, &MainWindow::clearOfflineAgents);
     connect(ui->pushButton_testAlert, &QPushButton::clicked, this, &MainWindow::testAlert);
+    connect(ui->pushButton_refreshHistory, &QPushButton::clicked, this, &MainWindow::loadHistory);
+    connect(ui->tabWidget, &QTabWidget::currentChanged, this, [this](int index){
+        if(index == 1)
+            loadHistory();
+    });
 }
 
 void MainWindow::addServer(const QString &name, const QString &ip)
@@ -140,6 +180,18 @@ void MainWindow::onMetricsReceived(const QString &name, int cpu,
             QDateTime now = QDateTime::currentDateTime();
             ui->tableWidget->item(i,6)->setText(now.toString("HH:mm:ss"));
             ui->tableWidget->item(i,6)->setData(Qt::UserRole, now);
+
+            QSqlQuery query;
+            query.prepare("INSERT INTO metrics (agent_name, cpu, ram, disk) "
+                          "VALUES (:name, :cpu, :ram, :disk)");                 // آماده سازی دستور درج (INSERT)
+            query.bindValue(":name", name);                                     // جایگذاری مقادیر
+            query.bindValue(":cpu", cpu);
+            query.bindValue(":ram", ramPercent);
+            query.bindValue(":disk", diskPercent);
+
+            if(!query.exec()) {
+                qDebug() << "Database Insert Error:" << query.lastError().text();
+            }
 
             statusBar()->showMessage("Received metrics from " + name);
             break;
@@ -430,4 +482,37 @@ void MainWindow::setupThresholdValidation()
             , this, [this](int value){
         ui->spinBox_warning->setMaximum(value - 1);
     });
+}
+
+void MainWindow::loadHistory()
+{
+    ui->tableWidget_history->setRowCount(0);                        // پاک کردن (سطرهای) جدول قبلی
+
+    QSqlQuery query;
+    if(!query.exec("SELECT timestamp, agent_name, cpu, ram, disk FROM metrics ORDER BY timestamp DESC LIMIT 100")) {
+        qDebug() << "Failed to load history:" << query.lastError().text();
+        return;
+    }
+
+    // پر کردن جدول با نتایج
+    int row = 0;
+    while (query.next()) {
+        ui->tableWidget_history->insertRow(row);
+
+        QString timestamp = query.value(0).toString();
+        QString agentName = query.value(1).toString();
+        int cpu = query.value(2).toInt();
+        int ram = query.value(3).toInt();
+        int disk = query.value(4).toInt();
+
+        ui->tableWidget_history->setItem(row, 0, new QTableWidgetItem(timestamp));
+        ui->tableWidget_history->setItem(row, 1, new QTableWidgetItem(agentName));
+        ui->tableWidget_history->setItem(row, 2, new QTableWidgetItem(QString::number(cpu) + " %"));
+        ui->tableWidget_history->setItem(row, 3, new QTableWidgetItem(QString::number(ram) + " %"));
+        ui->tableWidget_history->setItem(row, 4, new QTableWidgetItem(QString::number(disk) + " %"));
+
+        row++;
+    }
+
+    statusBar()->showMessage(QString("Loaded %1 records from data base.").arg(row));
 }

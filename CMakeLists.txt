@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 project(ServerMonitorUI LANGUAGES CXX)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Network)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Network Sql)
 
 qt_standard_project_setup()
 
@@ -19,7 +19,8 @@ target_link_libraries(ServerMonitorUI
     PRIVATE
         Qt::Core
         Qt::Widgets
-	Qt::Network;
+	Qt::Network
+	Qt::Sql
 )
 
 install(TARGETS ServerMonitorUI

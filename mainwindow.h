@@ -38,6 +38,7 @@ private slots:
     void clearOfflineAgents();
     void testAlert();
     void saveSettings();
+    void loadHistory();
 private:
     Ui::MainWindow *ui;
     QTimer *elapsedTimer;
