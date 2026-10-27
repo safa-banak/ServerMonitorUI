@@ -27,6 +27,8 @@ Agents run on remote machines, collect CPU, RAM, and Disk metrics, and send them
 
 ## Architecture
 
+![System Architecture](screenshots/architecture.png)
+
 [Agent 1] ──TCP──┐
 [Agent 2] ──TCP──┤
 [Agent 3] ──TCP──┼──▶ [ServerMonitor Dashboard]
