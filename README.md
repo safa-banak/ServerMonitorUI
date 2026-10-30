@@ -57,11 +57,23 @@ Open the project in Qt Creator and press Run.
 
 Or build manually:
 
+```
 mkdir build && cd build
 cmake ..
 cmake --build .
+```
 
+## Docker Deployment
 
+You can also run the dashboard as a headless Docker container (TCP service only):
+
+```bash
+docker build -t server-monitor-ui .
+docker run -d --name server-monitor -p 12345:12345 server-monitor-ui
+```
+
+The container listens on port `12345` for incoming agent connections.
+To stop the container, run `docker stop server-monitor`.
 
 ## How to Use
 

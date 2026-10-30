@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 project(ServerMonitorUI LANGUAGES CXX)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets Network Sql)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Widgets Network Sql)
 
 qt_standard_project_setup()
 
@@ -29,9 +29,9 @@ install(TARGETS ServerMonitorUI
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-qt_generate_deploy_app_script(
-    TARGET ServerMonitorUI
-    OUTPUT_SCRIPT deploy_script
-    NO_UNSUPPORTED_PLATFORM_ERROR
-)
-install(SCRIPT ${deploy_script})
+#qt_generate_deploy_app_script(
+#    TARGET ServerMonitorUI
+#    OUTPUT_SCRIPT deploy_script
+#    NO_UNSUPPORTED_PLATFORM_ERROR
+#)
+#install(SCRIPT ${deploy_script})
