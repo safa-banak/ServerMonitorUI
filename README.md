@@ -65,6 +65,37 @@ cmake --build .
 
 ## Docker Deployment
 
+You can run the dashboard as a Docker container with a graphical interface (accessible via VNC) or in headless mode.
+
+### Option 1: Docker with GUI (VNC)
+
+```bash
+docker build -t server-monitor-ui .
+docker run -d --name server-monitor \
+  -p 12345:12345 \
+  -p 5900:5900 \
+  server-monitor-ui
+```
+
+- **Port `12345`**: TCP service for agents.
+- **Port `5900`**: VNC server for the graphical interface.
+
+To view the UI, connect to `YOUR_IP:5900` using any VNC client (e.g., RealVNC Viewer, TigerVNC, or Remmina).
+
+### Option 2: Headless (TCP service only)
+
+If you don't need the GUI, you can run the container in headless mode by changing the CMD in the Dockerfile to:
+
+```dockerfile
+CMD ["./ServerMonitorUI", "-platform", "offscreen"]
+```
+
+Then run:
+
+```bash
+docker run -d -p 12345:12345 server-monitor-ui
+```## Docker Deployment
+
 You can also run the dashboard as a headless Docker container (TCP service only):
 
 ```bash
